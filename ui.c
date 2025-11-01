@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include "ui.h"
+#include "data.h"
 
 void drawWelcomeScreen() {
     system("cls");
@@ -11,6 +13,8 @@ void drawWelcomeScreen() {
     printf("==========================================\n\n");
 }
 
+//ide maybe input bekeres style
+
 void drawDifficultyMenu() {
     system("cls");
     printf("==========================================\n");
@@ -20,16 +24,19 @@ void drawDifficultyMenu() {
     printf("------------------------------------------\n");
 }
 
-void drawQuestionScreen(const char* player, int qNum, int money, const char* question, const char* answers[4]) {
+void drawQuestionScreen(const char* player, int qNum, int money, const Question* question, bool fiftyFifty, bool phone, bool audience) {
     system("cls");
     printf("Név: %s | Kérdés #%d | Nyeremény: %d\n", player, qNum, money);
-    printf("------------------------------------------\n");
-    printf("%s\n\n", question);
-    printf("A) %s\nB) %s\nC) %s\nD) %s\n", answers[0], answers[1], answers[2], answers[3]);
-    printf("------------------------------------------\n");
+    printf("Segítségek: 50:50 (%s) | Telefonos (%s) | Közönség (%s)\n",
+           fiftyFifty ? "elérhető" : "felhasználva",
+           phone ? "elérhető" : "felhasználva",
+           audience ? "elérhető" : "felhasználva");
+    printf("----------------------------------------------------------------------\n");
+    printf("%s\n\n", question->question);
+    printf("A) %s\nB) %s\nC) %s\nD) %s\n", question->answer1, question->answer2, question->answer3, question->answer4);
+    printf("----------------------------------------------------------------------\n");
     printf("Válaszod: ");
 }
-
 void drawLeaderboard() {
     system("cls");
     printf("==========================================\n");

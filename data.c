@@ -2,10 +2,18 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <time.h>
 #include "data.h"
+
+#define MAX_QUESTIONS 5000
+#define MAX_CATEGORIES 100
 
 Question questions[MAX_QUESTIONS];
 int questionCount = 0;
+
+Question* questionPool[MAX_QUESTIONS];
+int poolCount = 0;
+
 char* categories[MAX_CATEGORIES];
 int categoryCount = 0;
 
@@ -39,12 +47,14 @@ void readData() {
     char* tmp;
     fgets(line, sizeof(line), stream);
 
-    while (fgets(line, sizeof(line), stream)) {
-        if (strlen(line) <= 1) continue;
+    while (fgets(line, sizeof(line), stream) && questionCount < MAX_QUESTIONS) {
+        if (strlen(line) <= 1)
+            continue;
         line[strcspn(line, "\r\n")] = '\0';
 
         tmp = strdup_safe(line);
-        if (!tmp) continue;
+        if (!tmp)
+            continue;
 
         char* token = strtok(tmp, ";");
         int col = 0;
@@ -57,8 +67,6 @@ void readData() {
                 (unsigned char)token[2] == 0xBF) {
                 memmove(token, token + 3, strlen(token) - 2);
             }
-
-            //printf("[%d] %s\n", col, token);
 
             switch(col) {
                 case 0:
@@ -96,7 +104,6 @@ void readData() {
     }
 
     fclose(stream);
-    getCategories();
 }
 
 bool isInArray(const char *category) {
@@ -107,14 +114,71 @@ bool isInArray(const char *category) {
     return false;
 }
 
-void getCategories() {
+Question* questionPool[MAX_QUESTIONS];
+
+//Ez az első szűrési lépés nehézség alapján.
+void buildPoolByDifficulty(int minDiff, int maxDiff) {
+    poolCount = 0;
     for (int i = 0; i < questionCount; i++) {
-        if (questions[i].category == NULL || strlen(questions[i].category) == 0)
+        if (questions[i].difficulty >= minDiff && questions[i].difficulty <= maxDiff) {
+            questionPool[poolCount] = &questions[i];
+            poolCount++;
+        }
+    }
+
+    if (poolCount == 0) {
+        printf("Sajnos ezen a nehezsegi szinten nincsenek kerdesek.\n");
+        return;
+    }
+
+    printf("poolCount after filtering by difficulty: %d\n", poolCount);
+}
+
+//ez a második lépés, ami a nehezsegi szint alapján gyűjti a kategóriákat.
+void getCategoriesFromPool(Question* pool[], int poolCount) {
+    categoryCount = 0;
+    for (int i = 0; i < poolCount; i++) {
+        if (pool[i]->category == NULL || strlen(pool[i]->category) == 0)
             continue;
 
-        if (!isInArray(questions[i].category) && categoryCount < MAX_CATEGORIES) {
-            categories[categoryCount] = strdup(questions[i].category);
+        if (!isInArray(pool[i]->category) && categoryCount < MAX_CATEGORIES) {
+            categories[categoryCount] = strdup(pool[i]->category);
             categoryCount++;
         }
     }
+
+    printf("categoryCount after filtering by pool: %d\n", categoryCount);
 }
+
+//ez a harmadik lépés, ami a felhasználó által kiválasztott kategóriák és nehezseg alapján szűri a pool-t.
+void filterPoolBySelectedCategories(const int selectedIndexes[], int count) {
+    // Ha a felhasználó a '0'-t (Mind) választotta, nincs mit szűrni.
+    if (count == 0) {
+        return;
+    }
+
+    int currentPoolCount = 0;
+    for (int i = 0; i < poolCount; i++) {
+        bool shouldKeep = false;
+        for (int j = 0; j < count; j++) {
+            int selectedIndex = selectedIndexes[j];
+            if (selectedIndex > 0 && selectedIndex <= categoryCount) {
+                const char* selectedCategoryName = categories[selectedIndex - 1];
+                if (questionPool[i]->category && strcmp(questionPool[i]->category, selectedCategoryName) == 0) {
+                    shouldKeep = true;
+                    break;
+                }
+            }
+        }
+        if (shouldKeep) {
+            questionPool[currentPoolCount] = questionPool[i];
+            currentPoolCount++;
+        }
+    }
+
+    poolCount = currentPoolCount;
+
+    printf("poolCount after filtering by selected categories: %d\n", poolCount);
+}
+
+//leaderboard kezelése majd itt lesz
