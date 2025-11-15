@@ -53,7 +53,7 @@ void playGame() {
     fgets(playerName, sizeof(playerName), stdin);
     playerName[strcspn(playerName, "\n")] = 0;
 
-    drawDifficultyMenu();
+    drawDifficultyMenu(); //ui.c
     char inputBuffer[10];
     fgets(inputBuffer, sizeof(inputBuffer), stdin);
     sscanf(inputBuffer, "%d", &diffChoice);
@@ -67,15 +67,15 @@ void playGame() {
     }
 
     //Kérdések előszűrése nehézség szerint
-    buildPoolByDifficulty(minDiff, maxDiff);
+    buildPoolByDifficulty(minDiff, maxDiff); //data.c
 
     if (poolCount == 0) {
         printf("Sajnos ezen a nehezsegi szinten nincsenek elerheto kerdesek.\n");
         return;
     }
 
-    getCategoriesFromPool(questionPool, poolCount);
-    drawCategorySelection(categories, categoryCount);
+    getCategoriesFromPool(questionPool, poolCount); //data.c
+    drawCategorySelection(categories, categoryCount); //ui.c
 
     int selectedCategories[categoryCount];
     int selectedCount = getUserSelections(selectedCategories, categoryCount);
@@ -126,15 +126,15 @@ void gameLoop(const char* player, bool* fiftyFifty, bool* phone, bool* audience)
     int questionNumber = 1;
     int correctAnswers = 0;
 
-    while(poolCount > 0) {
+    while(poolCount > 0 && correctAnswers < 15) {
         int randomIndex = rand() % poolCount;
         Question* currentQuestion = questionPool[randomIndex];
 
-        drawQuestionScreen(player, 1, correctAnswers * 1000, currentQuestion, &fiftyFifty, &phone, &audience);
+        drawQuestionScreen(player, questionNumber, correctAnswers * 1000, currentQuestion, &fiftyFifty, &phone, &audience);
 
         //ez meg nincs kesz annyira
         char answer;
-        printf("Valaszod (A/B/C/D): "); //todo: 1 2 3 4 is A B C D legyen mert balfaszok az emberek
+        printf("Valaszod (A/B/C/D): ");
         scanf(" %c", &answer);
         if(answer=='1') answer='A';
         else if(answer=='2') answer='B';
@@ -144,19 +144,25 @@ void gameLoop(const char* player, bool* fiftyFifty, bool* phone, bool* audience)
         if (toupper(answer) == toupper(currentQuestion->correctAnswer[0])) {
             printf("Helyes valasz!\n");
             correctAnswers++;
+            questionNumber++;
+            printf("Nyomj entert a kovetkezo kerdeshez...");
+            getchar();
         } else {
             printf("Rossz valasz! A helyes valasz: %s\n", currentQuestion->correctAnswer);
+            printf("Nyomj entert a menübe visszatéréshez...");
+            getchar();
+            startGame();
             break;
         }
         questionPool[randomIndex] = questionPool[poolCount - 1];
         poolCount--;
 
+        /*
         questionNumber++;
         printf("Nyomj entert a kovetkezo kerdeshez...");
-        getchar();
+        getchar();*/
     }
 
     printf("\nJatek vege! Osszesen %d helyes valaszt adtal.\n", correctAnswers);
-    //restart option?
     // updateLeaderboard meg ilyenek
 }

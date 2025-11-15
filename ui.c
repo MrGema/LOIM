@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include "ui.h"
 #include "data.h"
+#include "leaderboard.h"
 
 void drawWelcomeScreen() {
     system("cls");
@@ -67,4 +68,32 @@ void drawCategorySelection(char** catergories, int categoryCount) {
     }
     printf("------------------------------------------\n");
     printf("írja be szóközzel elválasztva a kategóriák számát amelyikben játszani szeretne\n");
+}
+
+void drawLeaderboard(const LeaderboardEntry entries[], int entryCount) {
+    system("cls");
+    printf("================================================================================\n");
+    printf("=                          D I C S O S E G L I S T A                           =\n");
+    printf("================================================================================\n\n");
+
+    printf("%-5s | %-50s | %12s | %10s\n", "Hely.", "Nev", "Nyeremeny", "Jatekido");
+    printf("------+----------------------------------------------------+--------------+-----------\n");
+
+    if (entryCount == 0) {
+        printf("A dicsőséglista egyelőre üres...\n");
+    } else {
+        for (int i = 0; i < entryCount; i++) {
+            // A printf formátum kódok biztosítják a szép, oszlopos igazítást:
+            // %-5d : balra igazított szám, 5 karakter szélesen
+            // %-50s: balra igazított szöveg, 50 karakter szélesen
+            // %12d: jobbra igazított szám, 12 karakter szélesen
+            printf("#%-4d | %-50s | %10d Ft | %7d s\n",
+                   i + 1,
+                   entries[i].playerName,
+                   entries[i].moneyWon,
+                   entries[i].timeInSeconds);
+        }
+    }
+
+    printf("\n\nNyomj egy entert a fomenube valo visszatereshez...");
 }
