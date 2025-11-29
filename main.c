@@ -21,5 +21,6 @@ int main() {
 #endif
 
     startGame();
+    freeAllMemory();
     return 0;
 }

@@ -1,10 +1,7 @@
 #ifndef DATA_H
 #define DATA_H
 
-#include <stdbool.h>
-
 #define MAX_QUESTIONS 5000
-#define MAX_CATEGORIES 100
 
 typedef struct {
     int difficulty;
@@ -20,17 +17,17 @@ typedef struct {
 extern Question questions[MAX_QUESTIONS];
 extern int questionCount;
 
-extern Question* questionPool[MAX_QUESTIONS];
+extern Question** questionPool;
 extern int poolCount;
 
-extern char* categories[MAX_CATEGORIES];
+extern char** categories;
 extern int categoryCount;
 
 
 void readData(void);
 void buildPoolByDifficulty(int minDiff, int maxDiff);
-void getCategoriesFromPool(Question* pool[], int poolCount);
+void getCategoriesFromPool(void);
 void filterPoolBySelectedCategories(const int selectedIndexes[], int count);
-
+void freeAllMemory(void);
 
 #endif

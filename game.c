@@ -39,17 +39,17 @@ void startGame() {
                 playGame();
                 break;
             case 2:
-                drawLeaderboard(leaderboard, leaderboardCount);
+                drawLeaderboard(leaderboardHead);
                 printf("\nNyomj egy entert a tovabblepeshez...");
                 getchar();
                 continue;
             case 3:
+                freeAllMemory();
                 exit(0);
             default:
                 printf("Ervenytelen valasztas! Probald ujra.\n");
                 break;
         }
-        break;
     }
 }
 
@@ -61,7 +61,7 @@ void playGame() {
     fgets(playerName, sizeof(playerName), stdin);
     playerName[strcspn(playerName, "\n")] = 0;
 
-    drawDifficultyMenu(); //ui.c
+    drawDifficultyMenu();
     char inputBuffer[10];
     fgets(inputBuffer, sizeof(inputBuffer), stdin);
     sscanf(inputBuffer, "%d", &diffChoice);
@@ -75,15 +75,15 @@ void playGame() {
     }
 
     //Kérdések előszűrése nehézség szerint
-    buildPoolByDifficulty(minDiff, maxDiff); //data.c
+    buildPoolByDifficulty(minDiff, maxDiff);
 
     if (poolCount == 0) {
         printf("Sajnos ezen a nehezsegi szinten nincsenek elerheto kerdesek.\n");
         return;
     }
 
-    getCategoriesFromPool(questionPool, poolCount); //data.c
-    drawCategorySelection(categories, categoryCount); //ui.c
+    getCategoriesFromPool();
+    drawCategorySelection(categories, categoryCount);
 
     int selectedCategories[categoryCount];
     int selectedCount = getUserSelections(selectedCategories, categoryCount);
@@ -111,7 +111,8 @@ int getUserSelections(int *outArray, int maxCount) {
     }   
 
     for (int i = 0; input[i]; i++) {
-        if (input[i] == ',') input[i] = ' ';
+        if (input[i] == ',') 
+            input[i] = ' ';
     }
 
     char *token = strtok(input, " \t\n");
@@ -131,6 +132,9 @@ int getUserSelections(int *outArray, int maxCount) {
 }
 
 void gameLoop(const char* player) {
+    fiftyfifty=true;
+    phone=true;
+    audience=true;
     clock_t startTime = clock();
     int questionNumber = 1;
     int correctAnswers = 0;
@@ -138,7 +142,7 @@ void gameLoop(const char* player) {
     while (poolCount > 0 && correctAnswers < 15) {
         int randomIndex = rand() % poolCount;
         Question* currentQuestion = questionPool[randomIndex];
-        drawQuestionScreen(player, questionNumber, correctAnswers * 1000, currentQuestion, &fiftyfifty, &phone, &audience);
+        drawQuestionScreen(player, questionNumber, correctAnswers * 1000, currentQuestion, fiftyfifty, phone, audience); //EZ MEG MINDIG GECIRE NEM IRJA KI A JOT
 
         char input;
         bool answerGiven = false;
@@ -160,11 +164,18 @@ void gameLoop(const char* player) {
                 case 'T':
                     PhoneAFriend(currentQuestion);
                     break;
-
-                case '1': input = 'A'; break;
-                case '2': input = 'B'; break;
-                case '3': input = 'C'; break;
-                case '4': input = 'D'; break;
+                case '1': 
+                    input = 'A'; 
+                    break;
+                case '2': 
+                    input = 'B'; 
+                    break;
+                case '3': 
+                    input = 'C'; 
+                    break;
+                case '4': 
+                    input = 'D'; 
+                    break;
             }
 
             if (input >= 'A' && input <= 'D') {
@@ -185,7 +196,6 @@ void gameLoop(const char* player) {
             startTime = clock() - startTime;
             printf("Rossz valasz! A helyes valasz: %s\n", currentQuestion->correctAnswer);
             printf("\nJatek vege! Osszesen %d helyes valaszt adtal.\n", correctAnswers);
-            printf("Processor time taken in pow function: %f seconds\n", (float)startTime / CLOCKS_PER_SEC);
             printf("Nyomj entert a menübe visszatéréshez...");
             getchar();
             break; 
@@ -208,11 +218,13 @@ void PhoneAFriend(Question* question) {
     if(rnd<80){
         printf("A baratod szerint a helyes valasz a(z) %s\n", question->correctAnswer);
     } else {
+        //veletlenszeruen valaszt egy rossz valaszt
         int correctIndex=getCorrectAnswerIndex(question);
         int incorrectIndex;
         do {
             incorrectIndex = rand() % 4;
         } while (incorrectIndex == correctIndex);
+
         switch (incorrectIndex)
         {
             case 0:
@@ -246,6 +258,7 @@ void AskTheAudience(Question* question) {
         do {
             incorrectIndex = rand() % 4;
         } while (incorrectIndex == correctIndex);
+
         switch (incorrectIndex)
         {
             case 0:

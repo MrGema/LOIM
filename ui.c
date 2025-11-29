@@ -25,11 +25,11 @@ void drawDifficultyMenu() {
     printf("------------------------------------------\n");
 }
 
-void drawQuestionScreen(const char* player, int qNum, int money, const Question* question, bool fiftyFifty, bool phone, bool audience) {
+void drawQuestionScreen(const char* player, int qNum, int money, const Question* question, bool fiftyfifty, bool phone, bool audience) {
     system("cls");
     printf("Név: %s | Kérdés #%d | Nyeremény: %d\n", player, qNum, money);
     printf("Segítségek: 50:50 (%s) | Telefonos (%s) | Közönség (%s)\n",
-           fiftyFifty ? "elérhető" : "felhasználva",
+           fiftyfifty ? "elérhető" : "felhasználva",
            phone ? "elérhető" : "felhasználva",
            audience ? "elérhető" : "felhasználva");
     printf("----------------------------------------------------------------------\n");
@@ -60,7 +60,7 @@ void drawCategorySelection(char** catergories, int categoryCount) {
     printf("írja be szóközzel elválasztva a kategóriák számát amelyikben játszani szeretne\n");
 }
 
-void drawLeaderboard(const LeaderboardEntry entries[], int entryCount) {
+void drawLeaderboard(LeaderboardEntry* head) {
     system("cls");
     printf("================================================================================\n");
     printf("=                          D I C S O S E G L I S T A                           =\n");
@@ -69,17 +69,15 @@ void drawLeaderboard(const LeaderboardEntry entries[], int entryCount) {
     printf("%-5s | %-50s | %12s | %10s\n", "Hely.", "Nev", "Nyeremeny", "Jatekido");
     printf("------+----------------------------------------------------+--------------+-----------\n");
 
-    if (entryCount == 0) {
+    if (head == NULL) {
         printf("A dicsőséglista egyelőre üres...\n");
     } else {
-        for (int i = 0; i < entryCount; i++) {
-            printf("#%-4d | %-49s | %10d Ft | %7d s\n",
-                   i + 1,
-                   entries[i].playerName,
-                   entries[i].moneyWon,
-                   entries[i].timeInSeconds);
+        int i = 1;
+        LeaderboardEntry* current = head;
+        while (current != NULL) {
+            printf("#%-4d | %-49s | %10d Ft | %7d s\n", i, current->playerName, current->moneyWon,  current->timeInSeconds);
+            current = current->next;
+            i++;
         }
     }
-
-    printf("\n\nNyomj egy entert a fomenube valo visszatereshez...");
 }

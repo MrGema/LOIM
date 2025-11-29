@@ -3,37 +3,25 @@
 #include <string.h>
 #include <stdbool.h>
 #include <time.h>
+
 #include "data.h"
 #include "debugmalloc.h"
-#define MAX_QUESTIONS 5000
-#define MAX_CATEGORIES 100
+#include "leaderboard.h"
 
 Question questions[MAX_QUESTIONS];
 int questionCount = 0;
 
-Question* questionPool[MAX_QUESTIONS];
+Question** questionPool = NULL;
 int poolCount = 0;
 
-char* categories[MAX_CATEGORIES];
+char** categories = NULL;
 int categoryCount = 0;
 
 static char* strdup_safe(const char* str) {
     if (!str) return NULL;
-    char* new_str = malloc(strlen(str) + 1);
-    if (new_str) {
-        strcpy(new_str, str);
-    }
-    return new_str;
-}
-
-void trimToken(char *str) {
-    char *start = str;
-    while (*start == ' ' || *start == '"' || *start == '\n' || *start == '\r')
-        start++;
-    char *end = start + strlen(start) - 1;
-    while (end > start && (*end == ' ' || *end == '"' || *end == '\n' || *end == '\r'))
-        *end-- = '\0';
-    memmove(str, start, strlen(start) + 1);
+    char* copy = malloc(strlen(str) + 1);
+    if (copy) strcpy(copy, str);
+    return copy;
 }
 
 void readData() {
@@ -44,57 +32,37 @@ void readData() {
     }
 
     char line[1024];
-    char* tmp;
+
     fgets(line, sizeof(line), stream);
 
-    while (fgets(line, sizeof(line), stream) && questionCount < MAX_QUESTIONS) {
-        if (strlen(line) <= 1)
-            continue;
-        line[strcspn(line, "\r\n")] = '\0';
+    while (fgets(line, sizeof(line), stream)) {
+        
+        if (questionCount >= MAX_QUESTIONS) break;
 
-        tmp = strdup_safe(line);
-        if (!tmp)
-            continue;
+        //leveszi a sorvégi újsor karaktereket
+        line[strcspn(line, "\r\n")] = 0;
+
+        //kell egy masolat, mert a strtok módosítja a stringet
+        char* tmp = strdup_safe(line);
+        if (!tmp) continue;
 
         char* token = strtok(tmp, ";");
         int col = 0;
+        
+        Question* q = &questions[questionCount];
 
+        //feltölti a kerdes mezoit
         while (token && col < 8) {
-            trimToken(token);
-
-            if (col == 0 && (unsigned char)token[0] == 0xEF &&
-                (unsigned char)token[1] == 0xBB &&
-                (unsigned char)token[2] == 0xBF) {
-                memmove(token, token + 3, strlen(token) - 2);
-            }
-
             switch(col) {
-                case 0:
-                    questions[questionCount].difficulty = atoi(token);
-                    break;
-                case 1:
-                    questions[questionCount].question = strdup_safe(token);
-                    break;
-                case 2:
-                    questions[questionCount].answer1 = strdup_safe(token);
-                    break;
-                case 3:
-                    questions[questionCount].answer2 = strdup_safe(token);
-                    break;
-                case 4:
-                    questions[questionCount].answer3 = strdup_safe(token);
-                    break;
-                case 5:
-                    questions[questionCount].answer4 = strdup_safe(token);
-                    break;
-                case 6:
-                    questions[questionCount].correctAnswer = strdup_safe(token);
-                    break;
-                case 7:
-                    questions[questionCount].category = strdup_safe(token);
-                    break;
+                case 0: q->difficulty = atoi(token); break;
+                case 1: q->question = strdup_safe(token); break;
+                case 2: q->answer1 = strdup_safe(token); break;
+                case 3: q->answer2 = strdup_safe(token); break;
+                case 4: q->answer3 = strdup_safe(token); break;
+                case 5: q->answer4 = strdup_safe(token); break;
+                case 6: q->correctAnswer = strdup_safe(token); break;
+                case 7: q->category = strdup_safe(token); break;
             }
-
             token = strtok(NULL, ";");
             col++;
         }
@@ -114,33 +82,61 @@ bool isInArray(const char *category) {
     return false;
 }
 
-Question* questionPool[MAX_QUESTIONS];
-
 //Ez az első szűrési lépés nehézség alapján.
 void buildPoolByDifficulty(int minDiff, int maxDiff) {
+    //Reset
+    if (questionPool) {
+        free(questionPool);
+        questionPool = NULL;
+    }
     poolCount = 0;
+
+    //megszamoljuk hány kérdés felel meg a kritériumnak
+    int requiredCount = 0;
+    for (int i = 0; i < questionCount; i++) {
+        if (questions[i].difficulty >= minDiff && questions[i].difficulty <= maxDiff) {
+            requiredCount++;
+        }
+    }
+
+    if (requiredCount == 0) {
+        printf("Sajnos ezen a nehezsegi szinten nincsenek kerdesek.\n");
+        return;
+    }
+
+    //lefoglaljuk a memoriát
+    questionPool = (Question**)malloc(requiredCount * sizeof(Question*));
+    if (!questionPool) {
+        printf("Memory allocation failed for pool.\n");
+        return;
+    }
+
+    //feltöltjük
     for (int i = 0; i < questionCount; i++) {
         if (questions[i].difficulty >= minDiff && questions[i].difficulty <= maxDiff) {
             questionPool[poolCount] = &questions[i];
             poolCount++;
         }
     }
-
-    if (poolCount == 0) {
-        printf("Sajnos ezen a nehezsegi szinten nincsenek kerdesek.\n");
-        return;
-    }
 }
 
 //ez a második lépés, ami a nehezsegi szint alapján gyűjti a kategóriákat.
-void getCategoriesFromPool(Question* pool[], int poolCount) {
-    categoryCount = 0;
+void getCategoriesFromPool() {
     for (int i = 0; i < poolCount; i++) {
-        if (pool[i]->category == NULL || strlen(pool[i]->category) == 0)
-            continue;
+        //Ha nince benne a tömbben, hozzáadjuk
+        if (!isInArray(questionPool[i]->category)) {
+            
+            //növeljük a kategória tömb méretét
+            char** temp = realloc(categories, (categoryCount + 1) * sizeof(char*));
+            
+            if (!temp) {
+                printf("Memory allocation failed for categories.\n");
+                return;
+            }
+            categories = temp;
 
-        if (!isInArray(pool[i]->category) && categoryCount < MAX_CATEGORIES) {
-            categories[categoryCount] = strdup(pool[i]->category);
+            //allokáljuk és másoljuk a kategória nevet
+            categories[categoryCount] = strdup(questionPool[i]->category);
             categoryCount++;
         }
     }
@@ -148,29 +144,62 @@ void getCategoriesFromPool(Question* pool[], int poolCount) {
 
 //ez a harmadik lépés, ami a felhasználó által kiválasztott kategóriák és nehezseg alapján szűri a pool-t.
 void filterPoolBySelectedCategories(const int selectedIndexes[], int count) {
-    // Ha a felhasználó a '0'-t (Mind) választotta, nincs mit szűrni.
-    if (count == 0) {
-        return;
-    }
+    //Ha a felhasználó 0-t adott meg, akkor az összes kategória ki van választva.
+    if (count == 0) return;
 
-    int currentPoolCount = 0;
+    //az uj nem lehet nagyobb mint a régi, ezért elég ekkora memóriát foglalni
+    Question** tempPool = (Question**)malloc(poolCount * sizeof(Question*));
+    if (!tempPool) return;
+
+    int newCount = 0;
+
     for (int i = 0; i < poolCount; i++) {
         bool shouldKeep = false;
+        
         for (int j = 0; j < count; j++) {
             int selectedIndex = selectedIndexes[j];
-            if (selectedIndex > 0 && selectedIndex <= categoryCount) {
-                const char* selectedCategoryName = categories[selectedIndex - 1];
-                if (questionPool[i]->category && strcmp(questionPool[i]->category, selectedCategoryName) == 0) {
+            
+            int arrayIndex = selectedIndex - 1;
+
+            if (arrayIndex >= 0 && arrayIndex < categoryCount) {
+                if (strcmp(questionPool[i]->category, categories[arrayIndex]) == 0) {
                     shouldKeep = true;
                     break;
                 }
             }
         }
+
         if (shouldKeep) {
-            questionPool[currentPoolCount] = questionPool[i];
-            currentPoolCount++;
+            tempPool[newCount] = questionPool[i];
+            newCount++;
         }
     }
 
-    poolCount = currentPoolCount;
+    free(questionPool);
+
+    questionPool = tempPool;
+    poolCount = newCount;
+
+    if (poolCount == 0) {
+        printf("Nincs kerdes a kivalasztott kategoriakban.\n");
+    }
+}
+
+void freeAllMemory() {
+    for (int i = 0; i < questionCount; i++) {
+        free(questions[i].question);
+        free(questions[i].answer1);
+        free(questions[i].answer2);
+        free(questions[i].answer3);
+        free(questions[i].answer4);
+        free(questions[i].correctAnswer);
+        free(questions[i].category);
+    }
+    free(questionPool);
+    
+    for (int i = 0; i < categoryCount; i++) {
+        free(categories[i]); 
+    }
+    free(categories);
+    freeLeaderboard();
 }
